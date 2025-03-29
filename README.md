@@ -19,7 +19,7 @@ With [lazy](https://github.com/folke/lazy.nvim):
 ```lua
 {
   'hrsh7th/nvim-cmp',
-  dependencies = { 'roginfarrer/cmp-css-variables' },
+  dependencies = { 'KieranBrannigan/cmp-css-variables' },
   config = function()
     require'cmp'.setup {
       sources = {
@@ -37,3 +37,41 @@ vim.g.css_variables_files = { "variables.css" }
 ```
 
 You probably will want to specify the files with global CSS variables on a per-project basis. Using Neovim's `exrc` setting, you can put a `.nvim.lua` file in the root of your project's directory with this defined there.
+
+An example setup would be:
+
+In your init.lua:
+
+```lua
+-- ~/.config/nvim/init.lua
+
+vim.opt.exrc = true
+vim.opt.secure = true
+```
+
+In your project's root directory, create a `.nvim.lua` file with the following contents:
+
+```lua
+-- ~/project_root~/.nvim.lua
+
+vim.g.css_variables_files = { "variables.css" }
+```
+
+To load in all css variables in a nextjs project build folder:
+
+```lua
+-- ~/project_root~/.nvim.lua
+local all_files = {
+  "src/app/styles/theme.css",
+}
+
+local full_pattern = ".next/static/css/**/*.css"
+
+local matches = vim.fn.glob(full_pattern, false, true)
+
+for _, file in ipairs(matches) do
+  table.insert(all_files, file)
+end
+
+vim.g.css_variables_files = all_files
+```
