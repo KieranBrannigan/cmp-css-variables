@@ -20,7 +20,7 @@ function M.join_paths(absolute, relative)
 			path = absolute:gsub("(.*)/.*", "%1")
 		end
 	end
-	return path .. "/" .. relative:gsub("^[%./|%../]*", "")
+	return path .. "/" .. relative:gsub("^(%./|%.%./)", "")
 end
 
 function M.get_css_variables(files)
