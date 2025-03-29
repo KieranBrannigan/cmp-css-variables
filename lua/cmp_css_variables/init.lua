@@ -17,17 +17,24 @@ function source.is_available()
 		)
 end
 
--- function source.get_keyword_pattern()
--- 	return [[\%(\$_\w*\|\%(\w\|\.\)*\)]]
+-- Start completion any time the user types two hyphens
+function source.get_keyword_pattern()
+	-- Match anything up to two hyphens, then match valid CSS property characters
+	return "--[-a-zA-Z0-9]\\+"
+end
+
+-- function source.get_keyword_length()
+-- 	-- The length of the keyword pattern is 2 (for two hyphens)
+-- 	return 2
 -- end
 
 function source.get_debug_name()
 	return "css-variables"
 end
 
-function source.get_trigger_characters()
-	return { "-" }
-end
+-- function source.get_trigger_characters()
+-- 	return { "-" }
+-- end
 
 function source.complete(self, _, callback)
 	local bufnr = vim.api.nvim_get_current_buf()
