@@ -31,20 +31,46 @@ function M.get_css_variables(files)
 
 	for _, file in ipairs(files) do
 		local content = vim.fn.readfile(M.join_paths(vim.fn.getcwd(), file))
+		if not content then
+			goto continue
+		end
+
 		for index, line in ipairs(content or {}) do
-			local name, value = line:match("^%s*[-][-](.*):(.*)[;]")
+			-- More flexible pattern matching for CSS variables
+			-- Matches various formats:
+			-- --variable: value;
+			-- --variable : value;
+			-- --variable:value;
+			-- --variable-name: value;
+			-- Also handles spaces and tabs
+			local name, value = line:match("^%s*%-%-([%w%-_]+)%s*:%s*([^;]+);")
+
 			if name and not used[name] then
-				local lineBefore = content[index - 1]
-				local comment = lineBefore:match("%s*/[*](.*)[*]/")
-				table.insert(variables, {
+				-- Look for comments in different formats
+				local comment
+				if index > 1 then
+					local lineBefore = content[index - 1]
+					-- Match both single-line and multi-line comment formats
+					comment = lineBefore:match("%s*/%*%s*(.-)%s*%*/") -- Multi-line comment
+						or lineBefore:match("%s*//(.-)%s*$") -- Single-line comment
+				end
+
+				-- Trim whitespace from value
+				value = value:match("^%s*(.-)%s*$")
+
+				local var_info = {
 					label = "--" .. name,
 					insertText = "var(--" .. name .. ")",
 					kind = cmp.lsp.CompletionItemKind.Variable,
 					documentation = comment and value .. "\n\n" .. comment or value,
-				})
+				}
+
+				table.insert(variables, var_info)
 				used[name] = true
 			end
 		end
+
+		::continue::
 	end
 
 	return variables
