@@ -35,38 +35,72 @@ function M.get_css_variables(files)
 			goto continue
 		end
 
-		for index, line in ipairs(content or {}) do
-			-- More flexible pattern matching for CSS variables
-			-- Matches various formats:
-			-- --variable: value;
-			-- --variable : value;
-			-- --variable:value;
-			-- --variable-name: value;
-			-- Also handles spaces and tabs
-			local name, value = line:match("^%s*%-%-([%w%-_]+)%s*:%s*([^;]+);")
+		-- Join lines that end with backslash
+		local processed_lines = {}
+		local current_line = ""
 
-			if name and not used[name] then
-				-- Look for comments in different formats
-				local comment
-				if index > 1 then
-					local lineBefore = content[index - 1]
-					-- Match both single-line and multi-line comment formats
-					comment = lineBefore:match("%s*/%*%s*(.-)%s*%*/") -- Multi-line comment
-						or lineBefore:match("%s*//(.-)%s*$") -- Single-line comment
+		for _, line in ipairs(content) do
+			line = line:gsub("^%s*(.-)%s*$", "%1") -- trim whitespace
+			if line:match("\\%s*$") then
+				current_line = current_line .. line:gsub("\\%s*$", "")
+			else
+				current_line = current_line .. line
+				if current_line ~= "" then
+					table.insert(processed_lines, current_line)
 				end
+				current_line = ""
+			end
+		end
 
-				-- Trim whitespace from value
-				value = value:match("^%s*(.-)%s*$")
+		-- Process each logical line
+		for index, line in ipairs(processed_lines) do
+			-- Look for comments in different formats
+			local comment
+			if index > 1 then
+				local lineBefore = processed_lines[index - 1]
+				comment = lineBefore:match("%s*/%*%s*(.-)%s*%*/") -- Multi-line comment
+					or lineBefore:match("%s*//(.-)%s*$") -- Single-line comment
+			end
 
-				local var_info = {
-					label = "--" .. name,
-					insertText = "var(--" .. name .. ")",
-					kind = cmp.lsp.CompletionItemKind.Variable,
-					documentation = comment and value .. "\n\n" .. comment or value,
-				}
+			-- Split line by semicolons, but respect strings
+			local pos = 1
+			local len = #line
+			local in_string = false
+			local string_char = nil
+			local block_start = 1
 
-				table.insert(variables, var_info)
-				used[name] = true
+			while pos <= len do
+				local char = line:sub(pos, pos)
+
+				if char == '"' or char == "'" then
+					if not in_string then
+						in_string = true
+						string_char = char
+					elseif string_char == char and line:sub(pos - 1, pos - 1) ~= "\\" then
+						in_string = false
+					end
+				elseif char == ";" and not in_string then
+					local block = line:sub(block_start, pos - 1)
+					local name, value = block:match("%s*%-%-([%w%-_]+)%s*:%s*([^;]+)")
+
+					if name and not used[name] then
+						-- Trim whitespace from value
+						value = value:match("^%s*(.-)%s*$")
+
+						local var_info = {
+							label = "--" .. name,
+							insertText = "var(--" .. name .. ")",
+							kind = cmp.lsp.CompletionItemKind.Variable,
+							documentation = comment and value .. "\n\n" .. comment or value,
+						}
+
+						table.insert(variables, var_info)
+						used[name] = true
+					end
+
+					block_start = pos + 1
+				end
+				pos = pos + 1
 			end
 		end
 
